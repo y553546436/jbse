@@ -137,6 +137,11 @@ UP extends StrategyUpdate<R>> extends Algorithm<D, R, DE, RE, UP> {
     InvalidOperandException, InvalidInputException {
         //possibly materializes the value
         final Value val = altLoads.getValueToLoad();
+        if(val.isSymbolic()) {
+            //System.out.println("READING Symbolic Fields "+val);
+            LukeFLAGS.SYMBOLIC_READ = true;
+            LukeFLAGS.MAY_BE_POLLUTER = true;
+        }
         final Value valMaterialized = possiblyMaterialize(state, val);
         final char valMaterializedType = valMaterialized.getType();
 

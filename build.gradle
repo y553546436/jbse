@@ -60,3 +60,5 @@ jar {
                    'Implementation-Version': version
     }
 }
+
+defaultTasks "build"

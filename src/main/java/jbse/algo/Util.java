@@ -1419,6 +1419,19 @@ public final class Util {
     public static void throwObject(State state, Calculator calc, Reference toThrow) 
     throws InvalidInputException, ClasspathException {
         try {
+            System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+            //System.out.println(state);
+            //System.out.println(toThrow.getClass());
+            //System.out.println(calc);
+            jbse.mem.Objekt e = state.getObject(toThrow);
+            System.out.println(e.getType());
+            //Map<Long, Objekt> heap = state.getHeap();
+            if(e.getType().toString().indexOf("java/lang/AbstractMethodError") != -1) {
+                LukeFLAGS.MAY_BE_POLLUTER = true;
+                LukeFLAGS.MAY_BE_VICTIM = true;
+                LukeFLAGS.ABSTARCT_METHOD_ERROR = true;
+            }
+
             state.unwindStack(toThrow);
         } catch (InvalidIndexException | InvalidProgramCounterException e) {
             throwVerifyError(state, calc); //TODO that's desperate
@@ -1443,6 +1456,7 @@ public final class Util {
      *        fields must be set.
      */
     public static void fillExceptionBacktrace(State state, Calculator calc, Reference excReference) {
+        java.util.Stack<StackTraceElement> Luke = new java.util.Stack<>();
         try {
             final Instance exc = (Instance) state.getObject(excReference);
             exc.setFieldValue(JAVA_THROWABLE_STACKTRACE, Null.getInstance());
@@ -1485,6 +1499,8 @@ public final class Util {
                 final int    lineNumber     = f.getSourceRow(); 
                 final String methodName     = f.getMethodSignature().getName();
 
+                Luke.push(new StackTraceElement(declaringClass, methodName, fileName, lineNumber));
+
                 //break if we reach the first frame for the exception <init>
                 if (excClass.equals(currentClass) && "<init>".equals(methodName)) {
                     break;
@@ -1513,6 +1529,10 @@ public final class Util {
                  InvalidTypeException |  FastArrayAccessNotAllowedException e) {
             //this should not happen (and if happens there is not much we can do)
             failExecution(e);
+        }
+        System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        while(Luke.size() > 0) {
+            System.out.println("    at "+Luke.pop());
         }
     }
 

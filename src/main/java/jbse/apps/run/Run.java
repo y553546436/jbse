@@ -335,6 +335,10 @@ public final class Run {
         @Override
         public boolean atCannotManageStateException(CannotManageStateException e)
         throws CannotManageStateException {
+            jbse.algo.LukeFLAGS.MAY_BE_VICTIM = true;
+            jbse.algo.LukeFLAGS.MAY_BE_POLLUTER = true;
+            jbse.algo.LukeFLAGS.JBSE_UNMANAGABLE_ERROR = true;
+            jbse.algo.LukeFLAGS.print();
             if (e instanceof CannotInvokeNativeException) {
                 this.pathKind = PathTypes.UNMANAGEABLE;
                 this.endOfPathMessage = WARNING_CANNOT_INVOKE_NATIVE + e.getMessage();
@@ -417,6 +421,10 @@ public final class Run {
         public boolean atPathEnd() {
             try {
                 final State currentState = Run.this.engine.getCurrentState();
+                if (currentState.getStuckException() != null) {
+                    jbse.algo.LukeFLAGS.EXCEPTION_RAISED = true;
+                    jbse.algo.LukeFLAGS.MAY_BE_VICTIM = true;
+                }
                 //prints the leaf state if the case
                 if (Run.this.parameters.getStepShowMode() == StepShowMode.ALL ||       //already shown
                     Run.this.parameters.getStepShowMode() == StepShowMode.SOURCE ||    //already shown
@@ -1109,6 +1117,8 @@ public final class Run {
             (this.timer == null ? 
              "." :
              ", " + MSG_END_DECISION + Util.formatTime(elapsedTimeDecisionProcedure) + " (" + Util.formatTimePercent(elapsedTimeDecisionProcedure, elapsedTime) + " of total)."));
+        jbse.algo.LukeFLAGS.print();
+        }
     }
 
     /**

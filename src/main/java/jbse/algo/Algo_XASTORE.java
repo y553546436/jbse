@@ -152,6 +152,12 @@ StrategyUpdate<DecisionAlternative_XASTORE>> {
             if (alt.isInRange()) {
                 final Reference arrayReference = (Reference) this.data.operand(0);
                 final Primitive index = (Primitive) this.data.operand(1);
+                
+                if(arrayReference.isSymbolic() /*|| jbse.algo.Util.getFromArray(state, this.ctx, arrayReference, index).size() == 1*/) {
+                    //System.out.println("Symbolic value OVERWRITTEN: " + arrayReference + " " + index);
+                    LukeFLAGS.MAY_BE_POLLUTER = true;
+                    LukeFLAGS.SYMBOLIC_WRITE = true;
+                }
                 storeInArray(state, this.ctx, arrayReference, index, this.valueToStore);
             } else {
                 throwNew(state, this.ctx.getCalculator(), ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION);

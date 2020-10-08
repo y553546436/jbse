@@ -38,7 +38,7 @@ public class DecisionProcedureTest {
     private static final ArrayList<String> Z3_COMMAND_LINE = new ArrayList<>();
     
     static {
-    	Z3_COMMAND_LINE.add("/opt/local/bin/z3");
+    	Z3_COMMAND_LINE.add("/usr/bin/z3");
     	Z3_COMMAND_LINE.add(SWITCH_CHAR + "smt2");
     	Z3_COMMAND_LINE.add(SWITCH_CHAR + "in");
     	Z3_COMMAND_LINE.add(SWITCH_CHAR + "t:10");

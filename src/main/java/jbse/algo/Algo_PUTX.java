@@ -182,6 +182,14 @@ StrategyUpdate<DecisionAlternative_NONE>> {
     protected final StrategyUpdate<DecisionAlternative_NONE> updater() {
         return (state, alt) -> {
             final Signature fieldSignatureResolved = new Signature(this.fieldClassResolved.getClassName(), this.data.signature().getDescriptor(), this.data.signature().getName());
+            jbse.val.Value o = destination(state).getFieldValue(fieldSignatureResolved);
+            //System.out.println("foo bar "+destination(state).getClass());
+            //System.out.println("o.class = " + o.getClass());
+            if(o.isSymbolic()) {
+                //System.out.println("Symbolic value OVERWRITTEN: " +o + " " + this.valueToPut + " " + this.getClass());
+                LukeFLAGS.MAY_BE_POLLUTER = true;
+                LukeFLAGS.SYMBOLIC_WRITE = true;
+            }
             destination(state).setFieldValue(fieldSignatureResolved, this.valueToPut);
         };
     }
