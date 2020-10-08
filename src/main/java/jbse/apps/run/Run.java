@@ -1119,7 +1119,6 @@ public final class Run {
              ", " + MSG_END_DECISION + Util.formatTime(elapsedTimeDecisionProcedure) + " (" + Util.formatTimePercent(elapsedTimeDecisionProcedure, elapsedTime) + " of total)."));
         jbse.algo.LukeFLAGS.print();
         }
-    }
 
     /**
      * Closes this {@link Run} object.

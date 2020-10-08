@@ -1429,7 +1429,7 @@ public final class Util {
             if(e.getType().toString().indexOf("java/lang/AbstractMethodError") != -1) {
                 LukeFLAGS.MAY_BE_POLLUTER = true;
                 LukeFLAGS.MAY_BE_VICTIM = true;
-                LukeFLAGS.ABSTARCT_METHOD_ERROR = true;
+                LukeFLAGS.ABSTRACT_METHOD_ERROR = true;
             }
 
             state.unwindStack(toThrow);
