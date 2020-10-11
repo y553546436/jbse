@@ -189,6 +189,10 @@ StrategyUpdate<DecisionAlternative_NONE>> {
                 //System.out.println("Symbolic value OVERWRITTEN: " +o + " " + this.valueToPut + " " + this.getClass());
                 LukeFLAGS.MAY_BE_POLLUTER = true;
                 LukeFLAGS.SYMBOLIC_WRITE = true;
+                if (LukeFLAGS.MAY_BE_VICTIM) {
+                    LukeFLAGS.print();
+                    System.exit(0);
+                }
             }
             destination(state).setFieldValue(fieldSignatureResolved, this.valueToPut);
         };

@@ -339,6 +339,7 @@ public final class Run {
             jbse.algo.LukeFLAGS.MAY_BE_POLLUTER = true;
             jbse.algo.LukeFLAGS.JBSE_UNMANAGABLE_ERROR = true;
             jbse.algo.LukeFLAGS.print();
+            System.exit(0);
             if (e instanceof CannotInvokeNativeException) {
                 this.pathKind = PathTypes.UNMANAGEABLE;
                 this.endOfPathMessage = WARNING_CANNOT_INVOKE_NATIVE + e.getMessage();
@@ -424,6 +425,10 @@ public final class Run {
                 if (currentState.getStuckException() != null) {
                     jbse.algo.LukeFLAGS.EXCEPTION_RAISED = true;
                     jbse.algo.LukeFLAGS.MAY_BE_VICTIM = true;
+                    if(jbse.algo.LukeFLAGS.MAY_BE_POLLUTER) {
+                        jbse.algo.LukeFLAGS.print();
+                        System.exit(0);
+                    }
                 }
                 //prints the leaf state if the case
                 if (Run.this.parameters.getStepShowMode() == StepShowMode.ALL ||       //already shown

@@ -141,6 +141,10 @@ UP extends StrategyUpdate<R>> extends Algorithm<D, R, DE, RE, UP> {
             //System.out.println("READING Symbolic Fields "+val);
             LukeFLAGS.SYMBOLIC_READ = true;
             LukeFLAGS.MAY_BE_POLLUTER = true;
+            if (LukeFLAGS.MAY_BE_VICTIM) {
+                LukeFLAGS.print();
+                System.exit(0);
+            }
         }
         final Value valMaterialized = possiblyMaterialize(state, val);
         final char valMaterializedType = valMaterialized.getType();
