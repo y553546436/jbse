@@ -1,6 +1,7 @@
 package jbse.bc;
 
 import static jbse.bc.Signatures.ASSERTIONDISABLED_NAME;
+import static jbse.bc.Signatures.JAVA_OBJECT;
 import static jbse.bc.Signatures.JAVA_STRING;
 import static jbse.common.Type.REFERENCE;
 import static jbse.common.Type.TYPEEND;
@@ -1286,7 +1287,9 @@ public abstract class ClassFile implements Comparable<ClassFile> {
     	if (sup == null) {
     		throw new InvalidInputException("Invoked ClassFile.isSubclass with null parameter.");
     	}
-        if (isArray() && sup.isArray()) {
+    	if (JAVA_OBJECT.equals(sup.getClassName())) {
+    	    return true; //every class/interface is subclass of java.lang.Object
+    	} else if (isArray() && sup.isArray()) {
             final ClassFile subMember = getMemberClass(); 
             final ClassFile supMember = sup.getMemberClass();
             if (subMember.isPrimitiveOrVoid() && supMember.isPrimitiveOrVoid()) {
@@ -1324,14 +1327,11 @@ public abstract class ClassFile implements Comparable<ClassFile> {
     }
 
     /**
-     * Produces all the superinterfaces of a given class.
+     * Produces all the superinterfaces of this class.
      * 
-     * @param startClass the {@link ClassFile} of the class whose superinterfaces 
-     *        are returned.
      * @return an {@link Iterable}{@code <}{@link ClassFile}{@code >} containing 
      *         all the superinterfaces of {@code startClassName} (included if
-     *         it is an interface). If {@code startClass == null} an empty 
-     *         {@link Iterable} is returned. A same superinterface is not iterated
+     *         it is an interface). A same superinterface is not iterated
      *         more than once even if the class inherits it more than once. 
      */
     public Iterable<ClassFile> superinterfaces() {

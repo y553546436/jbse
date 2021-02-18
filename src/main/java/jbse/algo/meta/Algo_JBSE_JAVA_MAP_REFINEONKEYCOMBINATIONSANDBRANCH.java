@@ -87,7 +87,7 @@ StrategyUpdate<DecisionAlternative_JAVA_MAP>> {
                 }
                 this.numKeys = ((Integer) ((Simplex) keysArray.getLength()).getActualValue()).intValue();
                 if (this.numKeys > 10) { //TODO make this limit parametric
-                	throw new MetaUnsupportedException("Excessive branching of jbse.base.JAVA_MAP.refineOnKeyCombinationsAndBranch, 2^" + numKeys + " branches necessary.");
+                	throw new MetaUnsupportedException("Excessive branching of jbse.base.JAVA_MAP.refineOnKeyCombinationsAndBranch, 2^" + this.numKeys + " branches necessary.");
                 }
                 
                 final Primitive[] keyIn = new Primitive[this.numKeys];
@@ -155,7 +155,7 @@ StrategyUpdate<DecisionAlternative_JAVA_MAP>> {
         						.op_return()
         						.mk();
         			} else {
-        				final Reference value = state.createSymbolMemberMapValue(this.map.getOrigin(), key);
+        				final ReferenceSymbolic value = state.createSymbolMemberMapValueKeyCurrentHistoryPoint(this.map.getOrigin(), key);
         				state.pushOperand(this.thisReference);
         				state.pushOperand(key);
         				state.pushOperand(value);

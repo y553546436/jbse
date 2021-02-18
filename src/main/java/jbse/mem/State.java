@@ -26,6 +26,7 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -105,6 +106,7 @@ public final class State implements Cloneable {
     //gets reflectively some fields for later access
     private static final Field FIS_PATH;
     private static final Field FOS_PATH;
+    private static final Field RAF_PATH;
     private static final Field FIS_IN;
     private static final Field FOS_OUT;
     private static final Field FILEDESCRIPTOR_FD;
@@ -117,6 +119,7 @@ public final class State implements Cloneable {
         try {
             FIS_PATH = FileInputStream.class.getDeclaredField("path");
             FOS_PATH = FileOutputStream.class.getDeclaredField("path");
+            RAF_PATH = RandomAccessFile.class.getDeclaredField("path");
             FIS_IN = FilterInputStream.class.getDeclaredField("in");
             FOS_OUT = FilterOutputStream.class.getDeclaredField("out");
             FILEDESCRIPTOR_FD = FileDescriptor.class.getDeclaredField("fd");
@@ -269,6 +272,22 @@ public final class State implements Cloneable {
         
         Inflater(long address, boolean nowrap) {
             this(address, nowrap, null, 0, 0);
+        }
+    }
+    
+    /**
+     * Class used to wrap {@link RandomAccessFile} information.
+     * 
+     * @author Pietro Braione
+     *
+     */
+    private static final class RandomAccessFileWrapper {
+        final RandomAccessFile raf;
+        final String modeString;
+        
+        RandomAccessFileWrapper(RandomAccessFile raf, String modeString) {
+            this.raf = raf;
+            this.modeString = modeString;
         }
     }
     
@@ -611,6 +630,12 @@ public final class State implements Cloneable {
     
     /** A counter for no-wrap snippet classfiles. */
     private int snippetClassFileCounter = 0;
+    
+    /** 
+     * Set to {@code true} whenever the last executed bytecode
+     * must be reexecuted.
+     */
+    private boolean stutters;
 
     /**
      * Constructor. It returns a virgin, pre-initial {@link State}.
@@ -744,7 +769,7 @@ public final class State implements Cloneable {
             //registers the stderr
             setFile(this.errFileId, err);
         } catch (IllegalArgumentException | IllegalAccessException | 
-        		 FrozenStateException | IOException e) {
+        InvalidInputException | IOException e) {
             throw new UnexpectedInternalException(e);
         }
     }
@@ -1426,35 +1451,77 @@ public final class State implements Cloneable {
      * 
      * @param id a {@code long}, either a file descriptor cast to {@code long} 
      *        (if we are on a Unix-like platform) or a file handle (if we are on Windows).
-     * @return a {@link FileInputStream} of a {@link FileOutputStream}, or
+     * @return a {@link FileInputStream}, or a {@link FileOutputStream}, or a {@link RandomAccessFile}, or
      *         {@code null} if {@code id} is not the descriptor/handle
      *         of an open file previously associated with a call to {@link #setFile(long, Object)}.
      * @throws FrozenStateException if the state is frozen.
      */
     public Object getFile(long id) throws FrozenStateException {
     	if (this.frozen) {
-    		throw new FrozenStateException();
+    	    throw new FrozenStateException();
     	}
-        return this.files.get(Long.valueOf(id));
+        final Object obj = this.files.get(Long.valueOf(id));
+        if (obj instanceof RandomAccessFileWrapper) {
+            return ((RandomAccessFileWrapper) obj).raf;
+        } else {
+            return obj;
+        }
     }
     
     /**
-     * Associates a file stream to an open file.
+     * Associates a {@link FileInputStream} to an open file id.
      * 
      * @param id a {@code long}, either a file descriptor cast to {@code long} 
      *        (if we are on a Unix-like platform) or a file handle (if we are on Windows).
-     * @param fileStream a {@link FileInputStream} or a {@link FileOutputStream} 
-     *        (if it is not an instance of one of these types the method does
-     *        nothing).
-     * @throws FrozenStateException if the state is frozen.
+     * @param file a {@link FileInputStream}.
+     * @throws InvalidInputException if {@code file == null} or the state is frozen.
      */
-    public void setFile(long id, Object fileStream) throws FrozenStateException {
-    	if (this.frozen) {
-    		throw new FrozenStateException();
-    	}
-        if (fileStream instanceof FileInputStream || fileStream instanceof FileOutputStream) {
-            this.files.put(Long.valueOf(id), fileStream);
+    public void setFile(long id, FileInputStream file) throws InvalidInputException {
+        if (file == null) {
+            throw new InvalidInputException("Invoked State.setFile with a null FileInputStream file parameter.");
         }
+    	if (this.frozen) {
+    	    throw new FrozenStateException();
+    	}
+    	this.files.put(Long.valueOf(id), file);
+    }
+    
+    /**
+     * Associates a {@link FileOutputStream} to an open file id.
+     * 
+     * @param id a {@code long}, either a file descriptor cast to {@code long} 
+     *        (if we are on a Unix-like platform) or a file handle (if we are on Windows).
+     * @param file a {@link FileOutputStream}.
+     * @throws InvalidInputException if {@code file == null} or the state is frozen.
+     */
+    public void setFile(long id, FileOutputStream file) throws InvalidInputException {
+        if (file == null) {
+            throw new InvalidInputException("Invoked State.setFile with a null FileOutputStream file parameter.");
+        }
+        if (this.frozen) {
+            throw new FrozenStateException();
+        }
+        this.files.put(Long.valueOf(id), file);
+    }
+    
+    /**
+     * Associates a {@link RandomAccessFile} to an open file id.
+     * 
+     * @param id a {@code long}, either a file descriptor cast to {@code long} 
+     *        (if we are on a Unix-like platform) or a file handle (if we are on Windows).
+     * @param file a {@link RandomAccessFile}.
+     * @param modeString a {@link String}, 
+     * @throws InvalidInputException if {@code file == null} or {@code modeString == null} or 
+     *         the state is frozen.
+     */
+    public void setFile(long id, RandomAccessFile file, String modeString) throws InvalidInputException {
+        if (file == null || modeString == null) {
+            throw new InvalidInputException("Invoked State.setFile with a null RandomAccessFile file or String modeString parameter.");
+        }
+        if (this.frozen) {
+            throw new FrozenStateException();
+        }
+        this.files.put(Long.valueOf(id), new RandomAccessFileWrapper(file, modeString));
     }
     
     /**
@@ -1467,7 +1534,7 @@ public final class State implements Cloneable {
      */
     public void removeFile(long id) throws FrozenStateException {
     	if (this.frozen) {
-    		throw new FrozenStateException();
+    	    throw new FrozenStateException();
     	}
         this.files.remove(Long.valueOf(id));
     }
@@ -2074,7 +2141,7 @@ public final class State implements Cloneable {
         }
         final int numOfStaticFields = classFile.numOfStaticFields();
         final Signature[] fieldsSignatures = classFile.getObjectFields();
-        final KlassImpl k = new KlassImpl(calc, false, null, this.historyPoint, numOfStaticFields, fieldsSignatures);
+        final KlassImpl k = new KlassImpl(calc, false, createSymbolKlassPseudoReference(this.historyPoint, classFile), this.historyPoint, numOfStaticFields, fieldsSignatures);
         k.setIdentityHashCode(calc.valInt(0)); //doesn't care because it is not used
         this.staticMethodArea.set(classFile, k);
     }
@@ -3577,17 +3644,17 @@ public final class State implements Cloneable {
     		throw new FrozenStateException();
     	}
         if (referenceSymbolic == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeExpandsAlreadyPresent with a null referenceSymbolic.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeExpandsAlreadyPresent with a null referenceSymbolic.");
         }
         if (resolved(referenceSymbolic)) {
-            throw new ContradictionException("Attempted to invoke State.assumeExpandsAlreadyPresent with an already resolved referenceSymbolic.");
+            throw new ContradictionException("Attempted to invoke " + getClass().getName() + ".assumeExpandsAlreadyPresent with an already resolved referenceSymbolic.");
         }
         final HeapObjekt freshObject = this.heap.getObject(freshObjectPosition);
         if (freshObject == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeExpandsAlreadyPresent with a freshObjectPosition where no object is stored.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeExpandsAlreadyPresent with a freshObjectPosition where no object is stored.");
         }
         if (!freshObject.isSymbolic()) {
-            throw new InvalidInputException("Attempted to invoke State.assumeExpandsAlreadyPresent with a freshObjectPosition where a concrete object is stored.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeExpandsAlreadyPresent with a freshObjectPosition where a concrete object is stored.");
         }
         
     	possiblyReset();
@@ -3617,14 +3684,14 @@ public final class State implements Cloneable {
     		throw new FrozenStateException();
     	}
         if (referenceSymbolic == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeAliases with a null referenceSymbolic.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeAliases with a null referenceSymbolic.");
         }
         if (resolved(referenceSymbolic)) {
-            throw new ContradictionException("Attempted to invoke State.assumeAliases with an already resolved referenceSymbolic.");
+            throw new ContradictionException("Attempted to invoke " + getClass().getName() + ".assumeAliases with an already resolved referenceSymbolic.");
         }
         final HeapObjekt aliasObject = getObjectInitial(aliasOrigin);
         if (aliasObject == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeAliases with an aliasOrigin that does not refer to any initial object.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeAliases with an aliasOrigin that does not refer to any initial object.");
         }
         
     	possiblyReset();
@@ -3650,10 +3717,10 @@ public final class State implements Cloneable {
     		throw new FrozenStateException();
     	}
         if (referenceSymbolic == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeNull with a null referenceSymbolic.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeNull with a null referenceSymbolic.");
         }
         if (resolved(referenceSymbolic)) {
-            throw new ContradictionException("Attempted to invoke State.assumeNull with an already resolved referenceSymbolic.");
+            throw new ContradictionException("Attempted to invoke " + getClass().getName() + ".assumeNull with an already resolved referenceSymbolic.");
         }
         
     	possiblyReset();
@@ -3679,7 +3746,7 @@ public final class State implements Cloneable {
     		throw new FrozenStateException();
     	}
         if (classFile == null || klass == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeClassInitialized with a null classFile or klass parameter.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeClassInitialized with a null classFile or klass parameter.");
         }
         
     	possiblyReset();
@@ -3703,7 +3770,7 @@ public final class State implements Cloneable {
     		throw new FrozenStateException();
     	}
         if (classFile == null) {
-            throw new InvalidInputException("Attempted to invoke State.assumeClassNotInitialized with a null classFile.");
+            throw new InvalidInputException("Attempted to invoke " + getClass().getName() + ".assumeClassNotInitialized with a null classFile.");
         }
         
     	possiblyReset();
@@ -4043,6 +4110,31 @@ public final class State implements Cloneable {
         this.branchingDecision = false;
         return retval;
     }
+    
+    /**
+     * Sets whether this state stutters, i.e., whether
+     * the last executed bytecode must be executed again, 
+     * e.g., because some {@code <clinit>} frame must be
+     * executed before. 
+     * 
+     * @param stutters a {@code boolean}.
+     */
+    public void setStutters(boolean stutters) {
+    	this.stutters = stutters;
+    }
+    
+    /**
+     * Gets whether this state stutters, i.e., whether
+     * the last executed bytecode must be executed again, 
+     * e.g., because some {@code <clinit>} frame must be
+     * executed before. 
+     * 
+     * @param the {@code boolean} value set with the last
+     *        call to {@link #setStutters(boolean)}.
+     */
+    public boolean stutters() {
+    	return this.stutters;
+    }
 		
     /**
      * Returns the number of assumed object of a given class.
@@ -4067,13 +4159,16 @@ public final class State implements Cloneable {
      *         {@code this}.
      * @throws FrozenStateException if the state is frozen.
      */
+    //TODO this method doesn't work with arrays and maps!!!
     public void refine(State stateRefining) throws CannotRefineException, FrozenStateException {
     	if (this.frozen) {
     		throw new FrozenStateException();
     	}
-        //TODO this method doesn't work with arrays and maps!!!
+    	
+    	//the three components of stateRefining that we need
         final HistoryPoint refiningHistoryPoint = stateRefining.historyPoint;
         final PathCondition refiningPathCondition = stateRefining.pathCondition;
+        final SymbolFactory refiningSymbolFactory = stateRefining.symbolFactory;
 
         //checks that stateRefining refines this state, and 
         //gets an iterator to the additional clauses
@@ -4105,10 +4200,12 @@ public final class State implements Cloneable {
             } //else do nothing
         }
 
+        //TODO refine arrays and model maps (the initial ones)!!!
+        
         //updates the symbol factory
-        this.symbolFactory = stateRefining.symbolFactory.clone();
+        this.symbolFactory = refiningSymbolFactory.clone();
 
-        //finally, updates the path condition
+        //updates the path condition
         this.pathCondition = refiningPathCondition.clone();
     }
 
@@ -4253,7 +4350,44 @@ public final class State implements Cloneable {
 
     /**
      * A Factory Method for creating symbolic values. The symbol
-     * has as origin the value slot of an entry in a map.  
+     * has as origin the key slot of an entry in a map.  
+     * 
+     * @param container a {@link ReferenceSymbolic}, the container object
+     *        the symbol originates from. It must refer a map.
+     * @return a {@link ReferenceSymbolic}.
+     * @throws InvalidInputException if the state is frozen or {@code container == null}.
+     */
+    public ReferenceSymbolic createSymbolMemberMapKey(ReferenceSymbolic container) 
+    throws InvalidInputException {
+    	if (this.frozen) {
+    		throw new FrozenStateException();
+    	}
+    	return this.symbolFactory.createSymbolMemberMapKey(container);
+    }
+
+    /**
+     * A Factory Method for creating symbolic values. The symbol
+     * has as origin the key slot of an entry in a map.  
+     * 
+     * @param container a {@link ReferenceSymbolic}, the container object
+     *        the symbol originates from. It must refer a map.
+     * @param value a {@link Reference}, the value of the entry in the 
+     *        container this symbol originates from.
+     * @return a {@link ReferenceSymbolic}.
+     * @throws InvalidInputException if {@code container == null || value == null}.
+     */
+    public ReferenceSymbolic createSymbolMemberMapKey(ReferenceSymbolic container, Reference value) 
+    throws InvalidInputException {
+    	if (this.frozen) {
+    		throw new FrozenStateException();
+    	}
+    	return this.symbolFactory.createSymbolMemberMapKey(container, value, getHistoryPoint());
+    }
+
+    /**
+     * A Factory Method for creating symbolic values. The symbol
+     * has as origin the value slot of an entry in a map. The key
+     * to retrieve it is at the current history point.
      * 
      * @param container a {@link ReferenceSymbolic}, the container object
      *        the symbol originates from. It must refer a map.
@@ -4262,12 +4396,32 @@ public final class State implements Cloneable {
      * @return a {@link ReferenceSymbolic}.
      * @throws FrozenStateException if the state is frozen.
      */
-    public ReferenceSymbolic createSymbolMemberMapValue(ReferenceSymbolic container, Reference key) 
-    		throws FrozenStateException {
+    public ReferenceSymbolic createSymbolMemberMapValueKeyCurrentHistoryPoint(ReferenceSymbolic container, Reference key) 
+    throws FrozenStateException {
     	if (this.frozen) {
     		throw new FrozenStateException();
     	}
     	return this.symbolFactory.createSymbolMemberMapValue(container, key, getHistoryPoint());
+    }
+
+    /**
+     * A Factory Method for creating symbolic values. The symbol
+     * has as origin the value slot of an entry in a map. The key
+     * to retrieve it is at the starting initial history point.
+     * 
+     * @param container a {@link ReferenceSymbolic}, the container object
+     *        the symbol originates from. It must refer a map.
+     * @param key a {@link Reference}, the key of the entry in the 
+     *        container this symbol originates from.
+     * @return a {@link ReferenceSymbolic}.
+     * @throws FrozenStateException if the state is frozen.
+     */
+    public ReferenceSymbolic createSymbolMemberMapValueKeyInitialHistoryPoint(ReferenceSymbolic container, Reference key) 
+    throws FrozenStateException {
+    	if (this.frozen) {
+    		throw new FrozenStateException();
+    	}
+    	return this.symbolFactory.createSymbolMemberMapValue(container, key, getHistoryPoint().startingInitial());
     }
 
     /**
@@ -4429,7 +4583,7 @@ public final class State implements Cloneable {
                         fisClone.skip(fisThis.getChannel().position());
                     }
                     o.files.put(entry.getKey(), fisClone);
-                } else { //entry.getValue() instanceof FileOutputStream
+                } else if (entry.getValue() instanceof FileOutputStream) {
                     final FileOutputStream fosClone;
                     if (entry.getKey() == this.outFileId ||  entry.getKey() == this.errFileId) {
                         fosClone = (FileOutputStream) entry.getValue();
@@ -4439,6 +4593,11 @@ public final class State implements Cloneable {
                         fosClone = new FileOutputStream(path);
                     }
                     o.files.put(entry.getKey(), fosClone);
+                } else { //entry.getValue() instanceof RandomAccessFileWrapper
+                    final RandomAccessFileWrapper rafWrapperThis = (RandomAccessFileWrapper) entry.getValue();
+                    final String path = (String) RAF_PATH.get(rafWrapperThis.raf);
+                    final RandomAccessFile rafClone = new RandomAccessFile(path, rafWrapperThis.modeString);
+                    o.files.put(entry.getKey(), new RandomAccessFileWrapper(rafClone, rafWrapperThis.modeString));
                 }
             }
         } catch (IllegalArgumentException | IllegalAccessException | IOException e) {
@@ -4581,8 +4740,10 @@ public final class State implements Cloneable {
             try {
                 if (file instanceof FileInputStream) {
                     ((FileInputStream) file).close();
-                } else { //file instanceof FileOutputStream
+                } else if (file instanceof FileOutputStream) {
                     ((FileOutputStream) file).close();
+                } else { //file instanceof RandomAccessFileWrapper
+                    ((RandomAccessFileWrapper) file).raf.close();
                 }
             } catch (IOException e) {
                 //go on with the next file

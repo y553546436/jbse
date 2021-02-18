@@ -1,5 +1,7 @@
 package jbse.val;
 
+import static jbse.val.Util.asCharacterLiteral;
+
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.val.exc.InvalidOperandException;
@@ -69,7 +71,7 @@ public final class Simplex extends Primitive implements Cloneable {
         } else if (type == Type.BYTE) {
         	this.toString = "(byte) " + this.value.toString();
         } else if (type == Type.CHAR) {
-        	this.toString = "'" + this.value.toString() + "'";
+        	this.toString = asCharacterLiteral(((Character) this.value).charValue());
         } else if (type == Type.DOUBLE) {
         	this.toString = this.value.toString() + "d";
         } else if (type == Type.FLOAT) {
@@ -82,7 +84,7 @@ public final class Simplex extends Primitive implements Cloneable {
             this.toString = "(short) " + this.value.toString();
         }
     }
-
+    
     /**
      * Factory method for {@link Simplex} values.
      * 

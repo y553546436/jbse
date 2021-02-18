@@ -66,8 +66,9 @@ import jbse.val.exc.InvalidOperandException;
 import jbse.val.exc.InvalidTypeException;
 
 /**
- * Meta-level implementation of {@link sun.misc.Unsafe#getObjectVolatile(Object, long)} in 
- * the case the object to read into is an array.
+ * Meta-level implementation of {@link sun.misc.Unsafe#getObject(Object, long)} and
+ * {@link sun.misc.Unsafe#getObjectVolatile(Object, long)} in the case the object 
+ * to read into is an array.
  * 
  * @author Pietro Braione
  */
@@ -103,7 +104,7 @@ StrategyUpdate<DecisionAlternative_XALOAD>> {
                 array = (Array) state.getObject(this.myObjectRef);
                 final ClassFile arrayMemberType = array.getType().getMemberClass();
                 if (!arrayMemberType.isReference() && !arrayMemberType.isArray()) {
-                    throw new UndefinedResultException("The object parameter to sun.misc.Unsafe.getObjectVolatile was an array whose member type is not a reference type.");
+                    throw new UndefinedResultException("The object parameter to sun.misc.Unsafe.getObject[Volatile] was an array whose member type is not a reference type.");
                 }
             } catch (ClassCastException e) {
                 //this should never happen now
@@ -128,7 +129,7 @@ StrategyUpdate<DecisionAlternative_XALOAD>> {
             Outcome o = null; //to keep the compiler happy
             final ArrayList<ReferenceSymbolic> nonExpandedRefs = new ArrayList<>(); //dummy
             try {
-                o = this.ctx.decisionProcedure.resolve_XALOAD(state, arrayAccessInfos, result, nonExpandedRefs);
+                o = this.ctx.decisionProcedure.resolve_XALOAD(arrayAccessInfos, result, nonExpandedRefs);
             //TODO the next catch blocks should disappear, see comments on removing exceptions in jbse.dec.DecisionProcedureAlgorithms.doResolveReference
             } catch (ClassFileNotFoundException exc) {
                 throwNew(state, this.ctx.getCalculator(), CLASS_NOT_FOUND_EXCEPTION);
@@ -144,6 +145,9 @@ StrategyUpdate<DecisionAlternative_XALOAD>> {
                 exitFromAlgorithm();
             } catch (ClassFileNotAccessibleException exc) {
                 throwNew(state, this.ctx.getCalculator(), ILLEGAL_ACCESS_ERROR);
+                exitFromAlgorithm();
+            } catch (HeapMemoryExhaustedException exc) {
+                throwNew(state, this.ctx.getCalculator(), OUT_OF_MEMORY_ERROR);
                 exitFromAlgorithm();
             } catch (ClassFileIllFormedException exc) {
                 throwVerifyError(state, this.ctx.getCalculator());
@@ -272,7 +276,7 @@ StrategyUpdate<DecisionAlternative_XALOAD>> {
             @Override
             public void updateOut(State s, DecisionAlternative_XALOAD_Out dao) 
             throws UndefinedResultException {
-                throw new UndefinedResultException("The offset parameter to sun.misc.Unsafe.getObjectVolatile was not a correct index for the object (array) parameter");
+                throw new UndefinedResultException("The offset parameter to sun.misc.Unsafe.getObject[Volatile] was not a correct index for the object (array) parameter");
             }
         };
     }
