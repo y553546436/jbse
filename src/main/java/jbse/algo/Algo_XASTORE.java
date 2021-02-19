@@ -157,10 +157,12 @@ StrategyUpdate<DecisionAlternative_XASTORE>> {
                     //System.out.println("Symbolic value OVERWRITTEN: " + arrayReference + " " + index);
                     LukeFLAGS.MAY_BE_POLLUTER = true;
                     LukeFLAGS.SYMBOLIC_WRITE = true;
+                    /*
                     if (LukeFLAGS.MAY_BE_VICTIM == true) {
                         LukeFLAGS.print();
                         System.exit(1);
                     }
+                    */
                 }
                 storeInArray(state, this.ctx, arrayReference, index, this.valueToStore);
             } else {
