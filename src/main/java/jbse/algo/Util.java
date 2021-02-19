@@ -1440,8 +1440,10 @@ public final class Util {
                 LukeFLAGS.MAY_BE_POLLUTER = true;
                 LukeFLAGS.MAY_BE_VICTIM = true;
                 LukeFLAGS.ABSTRACT_METHOD_ERROR = true;
+                /*
                 LukeFLAGS.print();
                 System.exit(0);
+                */
             }
 
             state.unwindStack(toThrow);

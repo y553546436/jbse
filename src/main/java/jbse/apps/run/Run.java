@@ -426,10 +426,12 @@ public final class Run {
                 if (currentState.getStuckException() != null) {
                     jbse.algo.LukeFLAGS.EXCEPTION_RAISED = true;
                     jbse.algo.LukeFLAGS.MAY_BE_VICTIM = true;
+                    /*
                     if(jbse.algo.LukeFLAGS.MAY_BE_POLLUTER) {
                         jbse.algo.LukeFLAGS.print();
                         System.exit(0);
                     }
+                    */
                 }
                 //prints the leaf state if the case
                 if (Run.this.parameters.getStepShowMode() == StepShowMode.ALL ||       //already shown
